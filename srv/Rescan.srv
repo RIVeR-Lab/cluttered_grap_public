@@ -1,0 +1,7 @@
+geometry_msgs/Point arm_point
+int32 start
+int32 end
+int32 vel
+---
+string filepath
+string error
