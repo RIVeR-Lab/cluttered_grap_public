@@ -1,0 +1,4 @@
+geometry_msgs/Point[] targets
+sensor_msgs/Image superpixels
+---
+bool res

@@ -1,6 +1,6 @@
 <launch>                                                                        
     <node pkg="image_publisher" type="image_publisher" name="image_publisher"
-          args="$(find cluttered_grasp)/images/top_down.png" >
+          args="$(find cluttered_grasp)/images/overhead.png" >
       <param name="flip_horizontal" value="false" />
       <param name="flip_vertical" value="false" />
       <param name="frame_id" value="my_camera" />

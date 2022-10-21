@@ -1,0 +1,6 @@
+sensor_msgs/Image mask
+int32 n_wavelengths
+string loss_function
+---
+float64[] data
+bool success

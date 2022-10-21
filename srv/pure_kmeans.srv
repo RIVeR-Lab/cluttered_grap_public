@@ -1,0 +1,3 @@
+sensor_msgs/Image superpixels
+---
+sensor_msgs/Image pure_regions

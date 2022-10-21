@@ -23,11 +23,10 @@ from cv_bridge import CvBridge
 from cluttered_grasp.srv import Rescan, RescanResponse
 from headwall_ros.srv import CubeRequest, CubeCommand, CubeRequestResponse, CubeCommandResponse, CubeSave, CubeSaveResponse
 from spectral_finger_planner.srv import Move, MoveResponse
-from cluttered_grasp.srv import several, superpixel, pure_kmeans, autoencode, autoencodereval, roi, nudge
+from cluttered_grasp.srv import several, superpixel, pure_kmeans, autoencode, autoencodereval, roi
 
 # collect_hypercube.py
-# Author: Nathaniel Hanson
-# Date: 04/13/22
+# Author: Nathaniel Hanson and Gary Lvov
 # Meta node to manage collection of hyperspectral data cube use HSI rail-robot workcell
 
 class HypercubeCollector():
@@ -68,10 +67,7 @@ class HypercubeCollector():
         self.autoTrain = rospy.ServiceProxy('/autoencoder/train', autoencode)
         rospy.wait_for_service('/autoencoder/reconstruct')
         self.autoEval = rospy.ServiceProxy('/autoencoder/reconstruct', autoencodereval)
-        # Initialize the movement optimization service
-        rospy.wait_for_service('/nudge')
-        self.moveClutter = rospy.ServiceProxy('/nudge', nudge)
-    
+
     def rescan(self, msg: Rescan) -> RescanResponse:
         '''
         Rescan a small portion of the table surface
@@ -124,78 +120,55 @@ class HypercubeCollector():
         '''
         End to end hypercube collection
         '''
-        filePaths = ["/home/river/datacubes/06_19_2022__17_45_29.npy","/home/river/datacubes/06_19_2022__17_50_15.npy","/home/river/datacubes/06_19_2022__17_55_04.npy"]
-        # for position in self.positions:
-        #     # Move rail to middle        print(img.shape)
-        #     msg = self.move_rail(self.MIDDLE_RAIL, 50)
-        #     print(msg)
-        #     print('Complete!')
-        #     # Move arm to position
-        #     msg = self.prep_move_arm(position)
-        #     print(msg)
-        #     # Move rail to start
-        #     msg = self.move_rail(self.START_RAIL, 50)
-        #     print(msg)
-        #     print('Rail ready for cube!')
-        #     # Start cube collection
-        #     msg = self.start('Start')
-        #     print(msg)
-        #     print('Cube collection started!')
-        #     # Move arm along length of workspace
-        #     msg = self.move_rail(self.END_RAIL, 2)
-        #     print('Rail done!')
-        #     print(msg)
-        #     # Stop hypercube collection
-        #     msg = self.pause('Pause')
-        #     print(msg)
-        #     # Move rail to middle to prevent lights from overheating it
-        #     msg = self.move_rail(self.MIDDLE_RAIL, 50)
-        #     print(msg)
-        #     # Save cube and report location
-        #     msg = self.save('/home/river/datacubes', '')
-        #     print(msg)
-        #     # Keep track of all the hypercubes we are collections
-        #     filePaths.append(msg.filepath)
-        #     # Clear cube to prevent excess data acculumation in memory
-        #     msg = self.clear('Clear')
-        #     print(msg)
+        filePaths = ["/home/river/datacubes/06_15_2022__22_19_15.npy", "/home/river/datacubes/06_15_2022__22_25_53.npy"]
+        for position in self.positions[2:]:
+            # Move rail to middle        print(img.shape)
+            msg = self.move_rail(self.MIDDLE_RAIL, 50)
+            print(msg)
+            print('Complete!')
+            # Move arm to position
+            msg = self.prep_move_arm(position)
+            print(msg)
+            # Move rail to start
+            msg = self.move_rail(self.START_RAIL, 50)
+            print(msg)
+            print('Rail ready for cube!')
+            # Start cube collection
+            msg = self.start('Start')
+            print(msg)
+            print('Cube collection started!')
+            # Move arm along length of workspace
+            msg = self.move_rail(self.END_RAIL, 2)
+            print('Rail done!')
+            print(msg)
+            # Stop hypercube collection
+            msg = self.pause('Pause')
+            print(msg)
+            # Move rail to middle to prevent lights from overheating it
+            msg = self.move_rail(self.MIDDLE_RAIL, 50)
+            print(msg)
+            # Save cube and report location
+            msg = self.save('/home/river/datacubes', '')
+            print(msg)
+            # Keep track of all the hypercubes we are collections
+            filePaths.append(msg.filepath)
+            # Clear cube to prevent excess data acculumation in memory
+            msg = self.clear('Clear')
+            print(msg)
 
         # Move arm to collect single image
-        print('Moving arm to collect single image...')
         msg = self.prep_move_arm(self.picture_pose)
 
-        # Create the composite data cube
-        print('Fusing data cube')
+        '''
+        First, stitches together all HSI into one hsi
+
+        Compares fused HSI to RGB data, obtaining the homography
+
+        Transform the hyperspectral cubes according to previously obtained homography,
+        creating a 1-1 association between pixels in the RGB image and pixels in the 
+        hyperspectral cube.
+        '''
         self.fuse_data(filePaths)
-
-        # Obtain superpixels from kinect img
-        print("Finding Superpixels!")
-        # TODO - Justify number of superpixels better
-        superpixels = self.get_superpixels()
-        
-        superpix_visu = self.br.imgmsg_to_cv2(superpixels, "passthrough")
-        path = "/home/river/cluttered_ws/src/cluttered_grasp/images/vest"
-        cv2.imwrite(os.path.join(path , "superpixels.png"), superpix_visu)
-
-        # Determine pure regions with RX and sensor fusion
-        print('Finding pure regions')
-        pure_img = self.get_pure_regions(superpixels)
-        # Use mask from selection regions to train our auto encoder
-        mask = self.br.cv2_to_imgmsg(pure_img, encoding="passthrough")
-        # TODO - vary the loss functions and determine which is prime for BOTH training and reconstruction
-        print('Training the autoEncoder')
-        output = self.autoTrain(mask, self.CHANNELS, 'mse')
-        # With model trained, let's now reconstruct and evaluate the loss
-        # Use mask from selection regions to train our auto encoder
-        mask = self.br.cv2_to_imgmsg(np.ones(pure_img.shape), encoding="passthrough")
-        print('Pushing exisiting points through the AutoEncoder')
-        loss = self.autoEval(mask, 'mae')
-        # Get prioritized points from the table scene
-        print('Finding regions of interest')
-        points = self.roi(superpixels, loss.result)
-        print(points.targets)
-        # Now we need to actually execute the plan with the data
-        self.moveClutter(points.targets, superpixels)
 
     def fuse_data(self, filepaths):
         rospy.wait_for_service('/associate')

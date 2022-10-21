@@ -1,0 +1,4 @@
+sensor_msgs/Image superpixels
+sensor_msgs/Image errors
+---
+geometry_msgs/Point[] targets

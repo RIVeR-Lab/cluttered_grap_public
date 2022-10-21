@@ -1,0 +1,5 @@
+float32 mean_tolerance
+float32 std_tolerance
+sensor_msgs/Image superpixels
+---
+sensor_msgs/Image pure_regions

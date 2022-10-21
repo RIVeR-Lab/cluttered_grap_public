@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  sensor_msgs
   message_generation
   message_runtime
   geometry_msgs
@@ -62,6 +63,15 @@ add_service_files(
   single.srv
   several.srv
   Rescan.srv
+  superpixel.srv
+  rx.srv
+  roi.srv
+  autoencode.srv
+  autoencodereval.srv
+  pure.srv
+  pure_kmeans.srv
+  segment_plane.srv
+  nudge.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -75,6 +85,7 @@ add_service_files(
 generate_messages(
   DEPENDENCIES
   std_msgs
+  sensor_msgs
   geometry_msgs
 )
 
